@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>blade attractor</title>
+<style>
+  body {
+    margin: 0;
+    background: #0a0a0e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: sans-serif;
+    color: #aaa;
+  }
+  canvas { display: block; }
+  .param {
+    font-size: 11px;
+    color: #666;
+    margin-top: 6px;
+    letter-spacing: 0.03em;
+  }
+  .controls {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0.75rem 0 0;
+    justify-content: center;
+    font-size: 13px;
+  }
+  .controls label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  button {
+    background: transparent;
+    border: 0.5px solid #555;
+    color: #aaa;
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { background: #1a1a1e; }
+</style>
+</head>
+<body>
+
+<canvas id="c" width="480" height="480"></canvas>
+<div class="param" id="pinfo">decay=0.946 · α=0.045 · γ=2.8</div>
+
+<div class="controls">
+  <label>speed <input type="range" id="spd" min="1" max="12" value="5" step="1" style="width:70px"></label>
+  <label>decay <input type="range" id="dec" min="0.90" max="0.999" value="0.946" step="0.001" style="width:70px"></label>
+  <label>α <input type="range" id="alp" min="0.005" max="0.15" value="0.045" step="0.005" style="width:70px"></label>
+  <button id="rst">reset ↗</button>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+const BASE = {
+  A: [[1.06, -0.82], [-1.12, -0.58]],
+  gamma: 2.8
+};
+
+const MAX_AGE = 160;
+let particles = [];
+
+function initParticles(n) {
+  particles = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.random() * 0.8 + 0.05;
+    particles.push({ x: Math.cos(a)*r, y: Math.sin(a)*r, age: Math.floor(Math.random()*MAX_AGE) });
+  }
+}
+
+function step(x, y, decay, alpha) {
+  const r2 = x*x + y*y;
+  const nl = Math.tanh(BASE.gamma * r2) * alpha;
+  const nx = (BASE.A[0][0]*x + BASE.A[0][1]*y + nl*x) * decay;
+  const ny = (BASE.A[1][0]*x + BASE.A[1][1]*y + nl*y) * decay;
+  return [nx, ny];
+}
+
+initParticles(1400);
+
+function tick() {
+  const spd = parseInt(document.getElementById('spd').value);
+  const decay = parseFloat(document.getElementById('dec').value);
+  const alpha = parseFloat(document.getElementById('alp').value);
+
+  document.getElementById('pinfo').textContent =
+    `decay=${decay.toFixed(3)} · α=${alpha.toFixed(3)} · γ=2.8`;
+
+  ctx.fillStyle = 'rgba(10,10,14,0.13)';
+  ctx.fillRect(0, 0, 480, 480);
+
+  for (let s = 0; s < spd; s++) {
+    for (const p of particles) {
+      const [nx, ny] = step(p.x, p.y, decay, alpha);
+      p.x = nx; p.y = ny; p.age++;
+      if (p.age > MAX_AGE || Math.abs(p.x) > 4 || Math.abs(p.y) > 4 || isNaN(p.x)) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * 0.8 + 0.05;
+        p.x = Math.cos(a)*r; p.y = Math.sin(a)*r; p.age = 0;
+      }
+    }
+  }
+
+  for (const p of particles) {
+    const sx = 240 + p.x * 120;
+    const sy = 240 - p.y * 120;
+    const r2 = p.x*p.x + p.y*p.y;
+    const hue = (r2 * 80 + 10) % 360;
+    const life = 1 - p.age / MAX_AGE;
+    const a = Math.pow(life, 0.5) * 0.85;
+    ctx.fillStyle = `hsla(${hue}, 95%, 60%, ${a})`;
+    ctx.fillRect(sx, sy, 1.6, 1.6);
+  }
+
+  requestAnimationFrame(tick);
+}
+
+tick();
+
+document.getElementById('rst').addEventListener('click', () => initParticles(1400));
+</script>
+</body>
+</html>
